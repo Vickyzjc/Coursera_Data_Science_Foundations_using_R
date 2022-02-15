@@ -1,0 +1,125 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+output: 
+  html_document:
+    keep_md: true
+---
+
+Before running the following code, it need to:
+(1) install the three packages: ggplot2, dplyr, Hmisc
+(2) set work space to a folder which contains this file and data file: "activity.csv"
+## Loading and preprocessing the data
+Firstly, we need to involve required packages
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+library(Hmisc)
+```
+Then read the CSV data
+```{r}
+activityData <- read.csv("activity.csv")
+```
+Then we preprocess the data
+```{r}
+cleanedData <- na.omit(activityData)
+cleanedData$date <- as.Date(cleanedData$date)
+```
+
+## What is mean total number of steps taken per day?
+Let's aggregate the data by a day
+```{r}
+stepsEachDay <- aggregate(steps ~ date, cleanedData, sum)
+```
+Then let's Plot statistic of steps
+
+```{r echo=FALSE}
+ggplot(stepsEachDay, aes(x = steps)) +
+  geom_histogram(binwidth = 700, fill = "orange") +
+  ggtitle("Steps Statistic") + 
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(x = "Steps", y = "Frequency")
+```
+
+The mean value of frequency of steps per day is 10766.19:
+```{r echo=FALSE}
+print(mean(stepsEachDay$steps))
+```
+The median value of frequency of steps per day is 10765:
+```{r echo=FALSE}
+print(median(stepsEachDay$steps))
+```
+## What is the average daily activity pattern?
+Firstly, let's aggregate the data by interval
+```{r}
+stepsByInterval <- aggregate(steps ~ interval, cleanedData, mean)
+```
+plot time series plot of the average number of steps taken
+```{r echo=FALSE}
+ggplot(stepsByInterval, aes(x=interval, y=steps)) + 
+  geom_line(color = "blue") +
+  ggtitle("Time Series Plot of The Average Number of steps By Interval") + 
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(x = "Interval", y = "Average Number of steps")
+```
+
+The 5-minute interval that, on average, contains the maximum number of steps is 835:
+```{r echo=FALSE}
+print(stepsByInterval$interval[which.max(stepsByInterval$steps)])
+```
+## Imputing missing values
+Calculate the number of NA
+```{r echo=FALSE}
+print(sum(is.na(activityData)))
+```
+use Package named: Hmisc to add mean of eliminating NA to fill the NA value
+```{r}
+prepareFilledNAData <- activityData
+prepareFilledNAData$steps <- impute(activityData$steps, fun=mean)
+```
+aggregate the data by a day
+```{r}
+stepsEachDayWithFilledNA <- aggregate(steps ~ date, prepareFilledNAData, sum)
+```
+
+```{r echo=FALSE}
+ggplot(stepsEachDayWithFilledNA, aes(x = steps)) +
+  geom_histogram(binwidth = 700, fill = "orange") +
+  ggtitle("Steps Statistic with filled NA by Mean") + 
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(x = "Steps", y = "Frequency")
+```
+
+After filling the NA, the mean value of frequency of steps per day: 10766.19
+```{r echo=FALSE}
+print(mean(stepsEachDay$steps))
+```
+After filling the NA, the median value of frequency of steps per day: 10765
+```{r echo=FALSE}
+print(median(stepsEachDay$steps))
+```
+## Are there differences in activity patterns between weekdays and weekends?
+Preprocessing the date:
+```{r}
+prepareFilledNAData$date <- as.Date(prepareFilledNAData$date)
+prepareFilledNAData$weekday <- weekdays(prepareFilledNAData$date)
+
+prepareFilledNAData$dayType[prepareFilledNAData$weekday %in% c('Monday','Tuesday', 'Wednesday', 'Thursday', 'Friday')] <- "Weekday"
+prepareFilledNAData$dayType[prepareFilledNAData$weekday %in% c('Saturday','Sunday')] <- "Weekend"
+
+prepareFilledNAData$dayType <- as.factor(prepareFilledNAData$dayType)
+```
+aggregate by interval for weekday and weekend
+```{r}
+prepareFilledNADataByInterval <- aggregate(steps ~ interval + dayType, data=prepareFilledNAData, mean)
+```
+plot time series Of average steps By interval accross weekdays and weekends
+```{r echo=FALSE}
+ggplot(prepareFilledNADataByInterval , aes(x = interval , y = steps, color=dayType)) + 
+  geom_line() + 
+  facet_wrap(~dayType, ncol = 1, nrow=2) + 
+  ggtitle("Average Number of steps By Interval Accross Weekdays & Weekends") + 
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(x = "Interval", y = "Average Number of steps")
+```
